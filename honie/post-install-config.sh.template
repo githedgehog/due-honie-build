@@ -1,0 +1,316 @@
+#!/bin/bash
+# Script to run configuration inside the docker container.
+# After package install has happened.
+# DUE_VERSION_COMPATIBILITY_TRACKING=1.0.0
+
+set -e
+# Copyright 2019,2020 Cumulus Networks, Inc.  All rights reserved.
+#
+#  SPDX-License-Identifier:     MIT
+
+# NOTE: there are configuration differences between Debian 8 and 9.
+#  Expect similar issues if using Ubuntu.
+
+. /due-configuration/install-config-common.lib
+
+
+# Add any additional sources.list files, like stretch-backports
+fxnInstallSourcesList
+
+# The default post install operations exist as a function
+# for easy invocation (or not) in overriding scripts.
+fxnPostInstallCommon
+
+
+# Detect expired releases
+if [[ $NAME = *Debian* ]];then
+    # Useful for old distributions that throw expired key errors.
+    # Though key update can be forced with: sudo apt-key adv --recv-keys
+    # Debian 8 Jessie is the first of these tested.
+    # NOTE:  --force-yes can apply the following:
+    #  --allow-unauthenticated
+    #  --allow-downgrades
+    #  --allow-remove-essential
+    # --allow-change-held-packages
+
+    # VERSION_ID and VERSION variables are sourced from /etc/os-release
+    if [ $((VERSION_ID < 9 )) = 1 ];then
+        APT_FAKE_TIME=" faketime "
+        APT_FORCE_YES=" --force-yes "
+
+        # Pretend to be an earlier date so keys are not yet expired.
+        APT_FAKE_DATE="2018-01-01"
+        # Ex: sudo faketime '2018-01-01 00:00:01' apt-get update
+
+        # I suspect additional fake times will have to be
+        # added.
+        case $VERSION_ID in
+            '8' )
+                APT_FAKE_DATE="2018-01-01"
+                ;;
+            * )
+                echo "ERROR! $0 Failed to set fake time for $VERSION. Exiting."
+                exit 1
+                ;;
+
+        esac
+        echo ""
+        echo "WARNING: detected expired release $NAME $VERSION_ID "
+        echo " APT install will use faketime and --force-yes in $0"
+        echo ""
+    fi
+fi
+
+
+#
+# Container specific configuration
+#
+# Add an ONIE specific build account
+USER_NAME=oniebuild
+
+# Put the user ID high enough to be unique, but not to conflict
+USER_ID=2201
+
+# Check based on directory
+if [ -d /home/$USER_NAME ];then
+    echo "User [ $USER_NAME ] exists. Continuing."
+else
+    echo "Adding user [ $USER_NAME ] with UID [ $USER_ID ] to the container."
+
+    adduser --home /home/$USER_NAME \
+            --shell /bin/bash \
+            --uid $USER_ID \
+            --gecos "" \
+            --disabled-password $USER_NAME > /dev/null || exit 1
+
+    echo "Adding sudo ability for $USER_NAME"
+    adduser $USER_NAME sudo > /dev/null || exit 1
+
+    echo "Adding sudo without password."
+    echo "$USER_NAME       ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+
+    #
+    # make sure directory is owned by user
+    #
+    chown $USER_NAME /home/$USER_NAME/.bashrc
+fi
+
+
+# If you expect to do development in the container, these are useful.
+EDITORS="vim emacs-nox magit"
+
+# if this is a Debian 8 container, this isn't easily available.
+DEBIAN_RELEASE=$( grep "Debian GNU/Linux" /etc/issue | awk '{print$3}')
+
+#
+# Note - only Debian releases are supported, not Ubuntu or anything else, yet.
+#
+case $DEBIAN_RELEASE in
+    "11" )
+	# HONIE - we only stick with Debian 11
+        DEBIAN_VERSION_PACKAGES="sbsigntool unzip tree python3.9-dev python3-distutils libelf-dev ispell jq "
+
+        # Packages used for secure boot (amd64 hard code is fine as this is Intel only)
+        #linux-headers-amd64?
+        SECURE_BOOT=" qemu-utils ovmf gnu-efi libfile-slurp-perl grub-common psmisc monkeysphere "
+		SPHINX_NAME=" python3-sphinx"		
+        ;;
+
+    * )
+        echo "ERROR! Failed to get ONIE Debian release type. Exiting."
+        exit 1
+        ;;
+esac
+#
+# apt-get install development packages
+# Note at this stage, any changes to the container's sources.list
+# will have happened.
+#
+
+# Note: packages after xorriso are optional, but convenient to have.
+set -x
+$APT_FAKE_TIME $APT_FAKE_DATE  apt-get update
+
+
+DEBIAN_FRONTEND=noninteractive \
+               $APT_FAKE_TIME $APT_FAKE_DATE \
+               apt-get install \
+               --assume-yes \
+               --no-install-recommends \
+               openssh-server \
+               sudo \
+               autoconf \
+               automake \
+               bc \
+               bison \
+               bsdmainutils \
+               build-essential \
+               ca-certificates \
+               cpio \
+               curl \
+               device-tree-compiler \
+               dosfstools \
+               fakeroot \
+               flex \
+               gawk \
+               git \
+               gperf \
+               gnupg2 \
+               help2man \
+               libefivar-dev \
+               libexpat1 \
+               libexpat1-dev \
+               libfreetype6-dev \
+               libncurses5 \
+               libncurses5-dev \
+               libnss3-dev \
+               libnss3-tools \
+               libpopt-dev \
+               libssl-dev \
+               libtool \
+               libtool-bin \
+               mtools \
+               pkg-config \
+               openssl \
+               psmisc \
+               python-all-dev \
+               rst2pdf \
+               rsync \
+               stgit \
+               texinfo \
+               u-boot-tools \
+               util-linux \
+               uuid-dev \
+               uuid-runtime \
+               wget \
+               x11-xkb-utils \
+               equivs \
+               xorriso \
+               vim \
+               telnet \
+               tmux \
+               tree \
+               $DEBIAN_VERSION_PACKAGES \
+               $EDITORS \
+               $SECURE_BOOT \
+               locales-all || exit 1
+
+
+#
+# Do Git configuration now that git has been installed.
+#
+#
+# Supply a default .gitconfig
+#
+
+cat <<EOF > /home/$USER_NAME/.gitconfig
+[user]
+        name = ONIE build account
+        email = oniebuild@localhost
+[push]
+        default = simple
+EOF
+chown $USER_NAME /home/$USER_NAME/.gitconfig
+
+cd /home/$USER_NAME
+
+
+# Set some basic git configuration to keep things from failing.
+# Being a professional, these will, of course be updated at build time...
+git config --global user.name "ONIE build account"
+git config --global user.email "oniebuild@localhost"
+
+# Default to only upload current branch on push
+#git config push.default simple
+
+
+#
+# Sphinx is really only needed for updating ONIE documentation
+# Only pull it in on Debian containers, as that is
+# 'official build environment'. Let other distributions build
+# without it ( or change the initial check below to include it.
+set -x
+if [ "$DEBIAN_RELEASE" != "" ];then
+    if [ "$DEBIAN_RELEASE" = "8" ];then
+        echo "Not installing $SPHINX_NAME You'll have to get creative."
+    else
+
+        if [ "$DEBIAN_RELEASE" = "9" ];then
+            echo "Installing backports versions of sphinx packages"
+            SPHINX_STRETCH_BACKPORTS=" -t stretch-backports "
+        fi
+
+        # Get it
+        DEBIAN_FRONTEND=noninteractive \
+                       $APT_FAKE_TIME $APT_FAKE_DATE \
+                       apt-get install \
+                       --assume-yes \
+                       --no-install-recommends \
+                       $SPHINX_STRETCH_BACKPORTS \
+                       sphinx-common \
+                       $SPHINX_NAME \
+                       libjs-sphinxdoc
+    fi
+fi
+
+#
+# Hub (https://github.com/github/hub) is not needed for build, but is handy for
+# managing pull requests.
+# Installing it here keeps the container the same for everyone using it.
+# Note: this assumes a 64bit AMD64 container
+#
+
+HUB_VERSION="2.12.8"
+HUB_URL="https://github.com/github/hub/releases/download/v${HUB_VERSION}/hub-linux-amd64-${HUB_VERSION}.tgz"
+
+echo "Installing optional package 'hub' version $HUB_VERSION as a GitHub utility in /usr/local/bin."
+echo "curl --remote-name --remote-header-name --location $HUB_URL"
+# This was wget instead of curl until wget developed an issue with redirects
+# where it would rapidly loop and then exceed the --max-redirect.
+# Curl gets it on the first try.
+curl --remote-name --remote-header-name --location $HUB_URL || exit 1
+tar -xvf hub-linux-amd64-${HUB_VERSION}.tgz                 || exit 1
+cp hub-linux-amd64-${HUB_VERSION}/bin/hub /usr/local/bin    || exit 1
+
+echo "Cleaning up download of hub."
+rm -rf hub-linux-amd64-${HUB_VERSION}*
+
+#
+# Efi tools. Available in Debian Buster, but not earlier.
+#
+if [ "$SECURE_BOOT" != "" ];then
+
+    EFI_TOOLS_VERSION="1.9.2"
+    EFI_TOOLS_URL="https://git.kernel.org/pub/scm/linux/kernel/git/jejb/efitools.git/snapshot/efitools-${EFI_TOOLS_VERSION}.tar.gz"
+    echo "Downloading efi tools."
+    wget $EFI_TOOLS_URL || exit 1
+    tar -xvf efitools-${EFI_TOOLS_VERSION}.tar.gz || exit 1
+    cd efitools-${EFI_TOOLS_VERSION}
+    echo "Building efi tools"
+    make || exit 1
+    echo "Installing *efi in /usr/local/bin"
+    sudo make install || exit 1
+    cd
+fi
+
+# HONIE additions
+# it's horrible debugging a build without these two
+apt-get install -y less vim
+
+# yubihsm: we need this for kernel building and adding our cert to the kernel
+YUBIHSM_SHELL_URL="https://developers.yubico.com/yubihsm-shell/Releases/yubihsm-shell-2.4.0-debian11-amd64.tar.gz"
+wget $YUBIHSM_SHELL_URL || exit 1
+tar xvf yubihsm-shell-2.4.0-debian11-amd64.tar.gz
+cd yubihsm-shell
+apt-get install -y -f ./libyubihsm-usb1_2.4.0_amd64.deb
+apt-get install -y -f ./libyubihsm-http1_2.4.0_amd64.deb
+apt-get install -y -f ./libyubihsm1_2.4.0_amd64.deb
+apt-get install -y -f ./libyubihsm-dev_2.4.0_amd64.deb
+apt-get install -y -f ./libykhsmauth1_2.4.0_amd64.deb
+apt-get install -y -f ./yubihsm-pkcs11_2.4.0_amd64.deb
+apt-get install -y -f ./yubihsm-auth_2.4.0_amd64.deb
+apt-get install -y -f ./yubihsm-shell_2.4.0_amd64.deb
+apt-get install -y -f ./yubihsm-wrap_2.4.0_amd64.deb
+
+echo "Done $0"

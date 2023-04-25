@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: "Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)"
+        required: false
+        default: false
+  pull_request:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '**'
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: [self-hosted, lab, he, simple]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up QEMU for Docker Buildkit
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: |
+            env.BUILDKIT_STEP_LOG_MAX_SIZE=-1
+            env.BUILDKIT_STEP_LOG_MAX_SPEED=-1
+      - name: Install due with our template
+        run: |
+          sudo apt-get install -y due
+          cp -r honie /usr/share/due/templates/
+      - name: Create due builder docker image
+        run: |
+          due --create --name honie-build --prompt HONIE --tag honie --use-template honie --from debian:11
+      - name: Push due docker image
+        run: |
+          docker tag due-build-onie:latest ghcr.io/githedgehog/due-build-onie:latest
+          docker push https://github.com/githedgehog/ONIE
+      - name: Setup tmate session for debug
+        if: ${{ failure() && github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 30
+        with:
+          limit-access-to-actor: true
