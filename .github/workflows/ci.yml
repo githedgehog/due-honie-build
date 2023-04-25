@@ -46,8 +46,8 @@ jobs:
           due --create --name honie-build --prompt HONIE --tag latest --use-template honie --from debian:11
       - name: Push due docker image
         run: |
-          docker tag due-build-onie:latest ghcr.io/githedgehog/due-build-onie:latest
-          docker push https://github.com/githedgehog/ONIE
+          docker tag due-honie-build:latest ghcr.io/githedgehog/due-honie-build:latest
+          docker push ghcr.io/githedgehog/due-honie-build:latest
       - name: Setup tmate session for debug
         if: ${{ failure() && github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
         uses: mxschmitt/action-tmate@v3
