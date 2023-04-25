@@ -35,7 +35,7 @@ jobs:
         run: |
           sudo apt-get install -y wget
           wget https://github.com/CumulusNetworks/DUE/releases/download/v4.0.1/due_4.0.1-1_all.deb
-          sudo apt-get install -y ./due_4.0.1-1_all.deb
+          sudo apt-get install -y -f ./due_4.0.1-1_all.deb
           cp -r honie /usr/share/due/templates/
       - name: Create due builder docker image
         run: |
