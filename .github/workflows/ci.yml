@@ -43,7 +43,7 @@ jobs:
           sudo cp -r honie /usr/share/due/templates/
       - name: Create due builder docker image
         run: |
-          due --create --name honie-build --prompt HONIE --tag honie --use-template honie --from debian:11
+          due --create --name honie-build --prompt HONIE --tag latest --use-template honie --from debian:11
       - name: Push due docker image
         run: |
           docker tag due-build-onie:latest ghcr.io/githedgehog/due-build-onie:latest
