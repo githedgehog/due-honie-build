@@ -38,9 +38,9 @@ jobs:
           cd DUE
           git checkout v4.0.1
           sed -i -e 's/^install:.*/install:/' Makefile
-          sudo make install
+          make install
           cd ..
-          cp -r honie /usr/share/due/templates/
+          sudo cp -r honie /usr/share/due/templates/
       - name: Create due builder docker image
         run: |
           due --create --name honie-build --prompt HONIE --tag honie --use-template honie --from debian:11
