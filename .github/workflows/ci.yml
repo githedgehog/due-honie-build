@@ -11,7 +11,7 @@ on:
   pull_request:
   push:
     branches:
-      - '**'
+      - main
     tags:
       - '**'
 concurrency:
@@ -47,6 +47,9 @@ jobs:
           make install
           cd ..
           sudo cp -r honie /usr/share/due/templates/
+      - name: Uninstall podman (conflict with due)
+        run: |
+          sudo apt-get remove -y podman | true
       - name: Create due builder docker image
         run: |
           due --create --name honie-build --prompt HONIE --tag latest --use-template honie --from debian:11
