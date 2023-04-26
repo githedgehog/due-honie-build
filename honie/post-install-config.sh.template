@@ -338,6 +338,18 @@ engine_id = pkcs11
 MODULE_PATH = /usr/lib/x86_64-linux-gnu/pkcs11/yubihsm_pkcs11.so
 EOF
 
+# Unfortunately Debian 11 does not want to "backport" the latest OpenSSL patch release
+# However, it contains a necessary bug fix for dynamic engine.
+# Essentially, this commit is missing: https://github.com/openssl/openssl/commit/d6bf4a2218aeb246ba7d34f02e895c37569c8265
+# We need to ensure to fix this. Only copying the libcrypto.so.1.1 would already be enough for this to work in theory.
+wget https://www.openssl.org/source/openssl-1.1.1t.tar.gz
+tar xf openssl-1.1.1t.tar.gz
+cd openssl-1.1.1t
+./config --prefix=/usr --openssldir=/etc/ssl --libdir=/usr/lib/x86_64-linux-gnu
+make
+make install
+cd
+
 # to be able to PGP sign the grub files for SECURE_GRUB support
 # we need to bring in gnupg-pkcs11-scd to support that with our HSM
 # unfortunately, we have to compile it, as the Debian shipped version 0.9.2 didn't work
