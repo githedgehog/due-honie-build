@@ -19,7 +19,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: [self-hosted, lab, he, simple]
+    #runs-on: [self-hosted, lab, he, simple]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
