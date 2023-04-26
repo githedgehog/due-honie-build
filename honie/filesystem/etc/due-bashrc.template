@@ -28,3 +28,11 @@ fi
 if [[ $PATH != */usr/sbin* ]];then
    PATH="/sbin:/usr/sbin:$PATH"
 fi
+
+# add the PKCS11 OpenSSL configuration to the environment
+export OPENSSL_CONF="/etc/openssl-pkcs11-engine.conf"
+
+# and we are assuming that if a YubiHSM is used
+# its configuration will be available here.
+# This must be mounted in on 
+export YUBIHSM_PKCS11_CONF=/etc/yubihsm/yubihsm_pkcs11.conf

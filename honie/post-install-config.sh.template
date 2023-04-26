@@ -298,7 +298,14 @@ fi
 # it's horrible debugging a build without these two
 apt-get install -y --no-install-recommends less vim
 
-# yubihsm: we need this for kernel building and adding our cert to the kernel
+# general PKCS11 access utilities that will work with OpenSSL engine
+apt-get install -y --no-install-recommends libengine-pkcs11-openssl p11-kit p11-kit-modules
+
+# not a requirement but useful for debugging
+apt-get install -y --no-install-recommends opensc-pkcs11 opensc
+
+# yubihsm: ultimately we need PKCS11 for access to our YubiHSMs
+# we need this for kernel building and adding our cert to the kernel
 # as well as signing of kernel images for secure boot support
 YUBIHSM_SHELL_URL="https://developers.yubico.com/yubihsm-shell/Releases/yubihsm-shell-2.4.0-debian11-amd64.tar.gz"
 wget $YUBIHSM_SHELL_URL || exit 1
@@ -313,6 +320,23 @@ apt-get install -y -f ./yubihsm-pkcs11_2.4.0_amd64.deb
 apt-get install -y -f ./yubihsm-auth_2.4.0_amd64.deb
 apt-get install -y -f ./yubihsm-shell_2.4.0_amd64.deb
 apt-get install -y -f ./yubihsm-wrap_2.4.0_amd64.deb
+
+# write out OpenSSL configuration file
+cat > /etc/openssl-pkcs11-engine.conf <<EOF
+openssl_conf = openssl_init
+
+[openssl_init]
+engines = engine_section
+
+[engine_section]
+pkcs11 = pkcs11_section
+
+[pkcs11_section]
+engine_id = pkcs11
+# not necessary, if it is, it is most likely at here
+#dynamic_path = /usr/lib/x86_64-linux-gnu/engines-1.1/pkcs11.so
+MODULE_PATH = /usr/lib/x86_64-linux-gnu/pkcs11/yubihsm_pkcs11.so
+EOF
 
 # to be able to PGP sign the grub files for SECURE_GRUB support
 # we need to bring in gnupg-pkcs11-scd to support that with our HSM
