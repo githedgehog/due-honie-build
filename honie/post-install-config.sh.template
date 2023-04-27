@@ -378,7 +378,7 @@ make
 make install
 cd
 
-sudo cat > /etc/gnupg-pkcs11-scd.conf <<EOF
+cat > /etc/gnupg-pkcs11-scd.conf <<EOF
 providers yubihsm
 provider-yubihsm-library /usr/lib/x86_64-linux-gnu/pkcs11/yubihsm_pkcs11.so
 provider-yubihsm-cert-private
