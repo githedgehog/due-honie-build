@@ -36,3 +36,14 @@ export OPENSSL_CONF="/etc/openssl-pkcs11-engine.conf"
 # its configuration will be available here.
 # This must be mounted in on 
 export YUBIHSM_PKCS11_CONF=/etc/yubihsm/yubihsm_pkcs11.conf
+
+# create and setup the GPG folder by default
+# this setup is so wonky, I doubt we can adopt this into the gpg-sign.sh script
+# TODO: maybe initialize in a separate folder with the --homedir flag?
+if [ ! -d $HOME/.gnupg ] ; then
+   mkdir $HOME/.gnupg
+   chmod 700 $HOME/.gnupg
+   cp /etc/gpg-agent.conf.template $HOME/.gnupg/gpg-agent.conf
+   # TODO: initialize private key stub
+   # TODO: import associated public keys (could be done somewhere else)
+fi

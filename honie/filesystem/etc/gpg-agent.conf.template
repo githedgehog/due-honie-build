@@ -1,0 +1,6 @@
+scdaemon-program /usr/bin/gnupg-pkcs11-scd
+pinentry-program /usr/local/bin/pinentry-auto
+# for some reason the gnupg-pkcs11-scd can lead to strange results
+# if this cache is enabled
+default-cache-ttl 1
+max-cache-ttl 1
