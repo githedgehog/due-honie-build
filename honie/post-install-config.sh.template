@@ -280,7 +280,7 @@ rm -rf hub-linux-amd64-${HUB_VERSION}*
 # Efi tools. Available in Debian Buster, but not earlier.
 #
 if [ "$SECURE_BOOT" != "" ];then
-
+    cd
     EFI_TOOLS_VERSION="1.9.2"
     EFI_TOOLS_URL="https://git.kernel.org/pub/scm/linux/kernel/git/jejb/efitools.git/snapshot/efitools-${EFI_TOOLS_VERSION}.tar.gz"
     echo "Downloading efi tools."
@@ -295,7 +295,7 @@ if [ "$SECURE_BOOT" != "" ];then
 fi
 
 # HONIE additions
-# it's horrible debugging a build without these two
+# it's horrible debugging a build without these
 apt-get install -y --no-install-recommends less vim strace
 
 # general PKCS11 access utilities that will work with OpenSSL engine
