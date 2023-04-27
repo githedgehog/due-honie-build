@@ -355,6 +355,7 @@ cd
 # unfortunately, we have to compile it, as the Debian shipped version 0.9.2 didn't work
 # as we also tested with a newer gpg, let's just use that version as well
 apt-get install -y --no-install-recommends \
+    pinentry-tty \
     libgpg-error0 libgpg-error-dev \
     libksba-dev libksba8 \
     libassuan0 libassuan-dev \
