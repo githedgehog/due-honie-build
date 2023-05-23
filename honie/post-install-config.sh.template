@@ -295,6 +295,14 @@ if [ "$SECURE_BOOT" != "" ];then
 fi
 
 # HONIE additions
+# oras installation
+ORAS_VERSION="1.0.0"
+curl -LO "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz"
+mkdir -p oras-install/
+tar -zxf oras_${ORAS_VERSION}_*.tar.gz -C oras-install/
+sudo mv oras-install/oras /usr/local/bin/
+rm -rf oras_${ORAS_VERSION}_*.tar.gz oras-install/
+
 # it's horrible debugging a build without these
 apt-get install -y --no-install-recommends less vim strace
 
