@@ -303,6 +303,9 @@ tar -zxf oras_${ORAS_VERSION}_*.tar.gz -C oras-install/
 sudo mv oras-install/oras /usr/local/bin/
 rm -rf oras_${ORAS_VERSION}_*.tar.gz oras-install/
 
+# we need cmake for some of our new .make snippets
+apt-get install -y --no-install-recommends cmake
+
 # it's horrible debugging a build without these
 apt-get install -y --no-install-recommends less vim strace
 
