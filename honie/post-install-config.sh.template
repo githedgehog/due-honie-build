@@ -296,12 +296,15 @@ fi
 
 # HONIE additions
 # oras installation
-ORAS_VERSION="1.0.0"
+ORAS_VERSION="1.1.0"
 curl -LO "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz"
 mkdir -p oras-install/
 tar -zxf oras_${ORAS_VERSION}_*.tar.gz -C oras-install/
 sudo mv oras-install/oras /usr/local/bin/
 rm -rf oras_${ORAS_VERSION}_*.tar.gz oras-install/
+
+# we are going to run the "modules_install" target for the kernel in our version of ONIE, and that needs kmod installed
+apt-get install -y --no-install-recommends kmod
 
 # we need cmake for some of our new .make snippets
 apt-get install -y --no-install-recommends cmake
@@ -318,19 +321,19 @@ apt-get install -y --no-install-recommends opensc-pkcs11 opensc
 # yubihsm: ultimately we need PKCS11 for access to our YubiHSMs
 # we need this for kernel building and adding our cert to the kernel
 # as well as signing of kernel images for secure boot support
-YUBIHSM_SHELL_URL="https://developers.yubico.com/yubihsm-shell/Releases/yubihsm-shell-2.4.0-debian11-amd64.tar.gz"
+YUBIHSM_SHELL_URL="https://developers.yubico.com/yubihsm-shell/Releases/yubihsm-shell-2.4.1-debian11-amd64.tar.gz"
 wget $YUBIHSM_SHELL_URL || exit 1
-tar xvf yubihsm-shell-2.4.0-debian11-amd64.tar.gz
+tar xvf yubihsm-shell-2.4.1-debian11-amd64.tar.gz
 cd yubihsm-shell
-apt-get install -y -f ./libyubihsm-usb1_2.4.0_amd64.deb
-apt-get install -y -f ./libyubihsm-http1_2.4.0_amd64.deb
-apt-get install -y -f ./libyubihsm1_2.4.0_amd64.deb
-apt-get install -y -f ./libyubihsm-dev_2.4.0_amd64.deb
-apt-get install -y -f ./libykhsmauth1_2.4.0_amd64.deb
-apt-get install -y -f ./yubihsm-pkcs11_2.4.0_amd64.deb
-apt-get install -y -f ./yubihsm-auth_2.4.0_amd64.deb
-apt-get install -y -f ./yubihsm-shell_2.4.0_amd64.deb
-apt-get install -y -f ./yubihsm-wrap_2.4.0_amd64.deb
+apt-get install -y -f ./libyubihsm-usb1_2.4.1_amd64.deb
+apt-get install -y -f ./libyubihsm-http1_2.4.1_amd64.deb
+apt-get install -y -f ./libyubihsm1_2.4.1_amd64.deb
+apt-get install -y -f ./libyubihsm-dev_2.4.1_amd64.deb
+apt-get install -y -f ./libykhsmauth1_2.4.1_amd64.deb
+apt-get install -y -f ./yubihsm-pkcs11_2.4.1_amd64.deb
+apt-get install -y -f ./yubihsm-auth_2.4.1_amd64.deb
+apt-get install -y -f ./yubihsm-shell_2.4.1_amd64.deb
+apt-get install -y -f ./yubihsm-wrap_2.4.1_amd64.deb
 
 # write out OpenSSL configuration file
 cat > /etc/openssl-pkcs11-engine.conf <<EOF
@@ -353,9 +356,9 @@ EOF
 # However, it contains a necessary bug fix for dynamic engine.
 # Essentially, this commit is missing: https://github.com/openssl/openssl/commit/d6bf4a2218aeb246ba7d34f02e895c37569c8265
 # We need to ensure to fix this. Only copying the libcrypto.so.1.1 would already be enough for this to work in theory.
-wget https://www.openssl.org/source/openssl-1.1.1t.tar.gz
-tar xf openssl-1.1.1t.tar.gz
-cd openssl-1.1.1t
+wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz
+tar xf openssl-1.1.1w.tar.gz
+cd openssl-1.1.1w
 ./config --prefix=/usr --openssldir=/etc/ssl --libdir=/usr/lib/x86_64-linux-gnu
 make
 make install
